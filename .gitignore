@@ -127,3 +127,14 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# PyCharm
+.idea/
+
+# Model weights
+*.onnx
+/assets/acoustic/*
+/assets/vocoder/*
+/cache/
+/assets/logs/*
+!/**/.gitkeep

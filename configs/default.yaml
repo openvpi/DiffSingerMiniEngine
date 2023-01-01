@@ -1,0 +1,28 @@
+dictionary:
+  filename: assets/dictionaries/opencpop-strict.txt
+  reserved_tokens: 3
+acoustic:
+  speedup: 10
+vocoder:
+  filename: assets/vocoder/nsf_hifigan.onnx
+  num_mel_bins: 128
+  hop_size: 512
+  sample_rate: 44100
+  force_on_cpu: true
+server:
+  port: 9266
+  cache_dir: cache/
+  max_threads: 1
+providers:
+  - name: CUDAExecutionProvider
+    options:
+      device_id: 0
+      cudnn_conv_algo_search: DEFAULT
+    attributes:
+      cuda_path: path/to/your/cuda/dlls
+      cudnn_path: path/to/your/cudnn/dlls
+  - name: DmlExecutionProvider
+    options:
+      device_id: 0
+  - name: CPUExecutionProvider
+    options: {}
