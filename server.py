@@ -87,6 +87,8 @@ def submit(request: BaseHTTPRequestHandler):
         if token in tasks:
             piles[token].append(code)
         else:
+            if token in failures:
+                failures.pop(token)
             tasks[token] = pool.submit(_execute, request_body, cache_file, token)
             piles[token] = [code]
         mutex.release()
@@ -117,21 +119,27 @@ def query(request: BaseHTTPRequestHandler):
         mutex.acquire()
         if token in tasks:
             task = tasks[token]
+            res = {}
             if task.cancelled():
-                status = 'CANCELLED'
-            elif task.done():
-                status = 'FINISHED'
-            elif task.running():
-                status = 'RUNNING'
+                res['status'] = 'CANCELLED'
             elif task.exception() is None:
-                status = 'QUEUED'
-            else:
-                status = 'FAILED'
-            res = {
-                'status': status
-            }
-            if status == 'FAILED':
+                res['status'] = 'QUEUED'
                 res['message'] = str(task.exception())
+            elif task.done():
+                res['status'] = 'FINISHED'
+            elif task.running():
+                res['status'] = 'RUNNING'
+            else:
+                res['status'] = 'FAILED'
+            request.send_response(200)
+            request.send_header('Content-Type', 'application/json')
+            request.end_headers()
+            request.wfile.write(json.dumps(res).encode('utf8'))
+        elif token in failures:
+            res = {
+                'status': 'FAILED',
+                'message': failures[token]
+            }
             request.send_response(200)
             request.send_header('Content-Type', 'application/json')
             request.end_headers()
@@ -188,17 +196,24 @@ def download(request: BaseHTTPRequestHandler):
 
 def _execute(request: dict, cache_file: str, token: str):
     logging.info(f'Task \'{token}\' begins')
-    wav = synthesis.run_synthesis(
-        request, phoneme_list,
-        os.path.join(ACOUSTIC_ROOT, f'{request["model"]}.onnx'),
-        vocoder_path, config
-    )
-    soundfile.write(cache_file, wav, config['vocoder']['sample_rate'])
-    mutex.acquire()
-    tasks.pop(token)
-    piles.pop(token)
-    mutex.release()
-    logging.info(f'Task \'{token}\' finished')
+    try:
+        wav = synthesis.run_synthesis(
+            request, phoneme_list,
+            os.path.join(ACOUSTIC_ROOT, f'{request["model"]}.onnx'),
+            vocoder_path, config
+        )
+        soundfile.write(cache_file, wav, config['vocoder']['sample_rate'])
+        logging.info(f'Task \'{token}\' finished')
+    except Exception as e:
+        failures[token] = str(e)
+        logging.error(f'Task \'{token}\' failed')
+        logging.error(str(e))
+        raise e
+    finally:
+        mutex.acquire()
+        tasks.pop(token)
+        piles.pop(token)
+        mutex.release()
 
 
 config = {}
@@ -210,6 +225,7 @@ cache = ''
 pool: ThreadPoolExecutor
 tasks = {}
 piles = {}
+failures = {}
 
 apis = {
     '/version': (version, ['GET']),
