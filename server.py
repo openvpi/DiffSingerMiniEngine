@@ -202,6 +202,7 @@ def _execute(request: dict, cache_file: str, token: str):
             os.path.join(ACOUSTIC_ROOT, f'{request["model"]}.onnx'),
             vocoder_path, config
         )
+        os.makedirs(cache, exist_ok=True)
         soundfile.write(cache_file, wav, config['vocoder']['sample_rate'])
         logging.info(f'Task \'{token}\' finished')
     except Exception as e:
@@ -286,7 +287,6 @@ if __name__ == '__main__':
     cache = config['server']['cache_dir']
     if not os.path.isabs(cache):
         cache = os.path.join(SERVER_ROOT, cache)
-    os.makedirs(cache, exist_ok=True)
     logging.info(f'Cache will be saved in \'{cache}\'')
 
     pool = ThreadPoolExecutor(max_workers=config['server']['max_threads'])
