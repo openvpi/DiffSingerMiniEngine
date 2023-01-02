@@ -4,7 +4,7 @@ dictionary:
 acoustic:
   speedup: 10
 vocoder:
-  filename: assets/vocoder/nsf_hifigan.onnx
+  filename: assets/vocoder/nsf_hifigan_onnx/nsf_hifigan.onnx
   num_mel_bins: 128
   hop_size: 512
   sample_rate: 44100
