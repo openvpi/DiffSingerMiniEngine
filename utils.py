@@ -37,9 +37,7 @@ def create_session(model_path: str, providers: list, force_on_cpu: bool = False)
         })
 
     if not available_providers_selected:
-        msg = 'None of the selected execution providers is available on this machine.'
-        logging.error(msg)
-        raise ProviderError(msg)
+        raise ProviderError('None of the selected execution providers is available on this machine.')
     providers = [(provider['name'], provider['options']) for provider in available_providers_selected]
 
     # Create session options
