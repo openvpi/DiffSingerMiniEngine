@@ -13,8 +13,8 @@ import soundfile
 import synthesis
 import utils
 
-VERSION = '1.0.0'
-DATE = '2023-01-01'
+VERSION = '1.0.1'
+DATE = '2023-01-08'
 SERVER_ROOT = os.path.dirname(os.path.abspath(__file__))
 CONFIG_ROOT = os.path.join(SERVER_ROOT, 'configs')
 ACOUSTIC_ROOT = os.path.join(SERVER_ROOT, 'assets', 'acoustic')
@@ -122,15 +122,16 @@ def query(request: BaseHTTPRequestHandler):
             res = {}
             if task.cancelled():
                 res['status'] = 'CANCELLED'
-            elif task.exception() is None:
-                res['status'] = 'QUEUED'
-                res['message'] = str(task.exception())
             elif task.done():
-                res['status'] = 'FINISHED'
+                if token in failures:
+                    res['status'] = 'FAILED'
+                    res['message'] = failures[token]
+                else:
+                    res['status'] = 'FINISHED'
             elif task.running():
                 res['status'] = 'RUNNING'
             else:
-                res['status'] = 'FAILED'
+                res['status'] = 'QUEUED'
             request.send_response(200)
             request.send_header('Content-Type', 'application/json')
             request.end_headers()
@@ -196,6 +197,8 @@ def download(request: BaseHTTPRequestHandler):
 
 def _execute(request: dict, cache_file: str, token: str):
     logging.info(f'Task \'{token}\' begins')
+    if 'speedup' not in request:
+        request['speedup'] = config['acoustic']['speedup']
     try:
         wav = synthesis.run_synthesis(
             request, phoneme_list,
