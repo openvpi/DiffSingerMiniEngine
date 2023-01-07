@@ -32,7 +32,7 @@ def acoustic_preprocess(name2token: list,
     return tokens[None], ph_dur[None], f0_seq[None]
 
 
-def acoustic_infer(model: str, providers: list, tokens, durations, f0, speedup):
+def acoustic_infer(model: str, providers: list, *, tokens, durations, f0, speedup):
     session = utils.create_session(model, providers)
     mel = session.run(['mel'], {'tokens': tokens, 'durations': durations, 'f0': f0, 'speedup': speedup})[0]
     return mel

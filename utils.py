@@ -48,7 +48,7 @@ def create_session(model_path: str, providers: list, force_on_cpu: bool = False)
         options.enable_mem_pattern = False
         options.execution_mode = ort.ExecutionMode.ORT_SEQUENTIAL
     elif available_providers_selected[0]['name'] == 'CUDAExecutionProvider' and not _dll_loaded:
-        # CUDA may break in virtual environments.
+        # CUDA_PATH may break in virtual environments.
         # Add CUDA and cuDNN libraries to DLL directories manually.
         attr = available_providers_selected[0].get('attributes')
         if attr is not None:
