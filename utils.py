@@ -78,6 +78,19 @@ def dictionary_to_phonemes(dictionary: dict, pad: int) -> list:
     return [None for _ in range(pad)] + sorted(phonemes)
 
 
+def dictionary_to_vowels(dictionary: dict) -> set:
+    vowels = {'AP', 'SP'}
+    for ph_list in dictionary.values():
+        ph_count = len(ph_list)
+        if ph_count == 0 or ph_list[0] in ['AP', 'SP']:
+            continue
+        elif len(ph_list) == 1:
+            vowels.add(ph_list[0])
+        else:
+            vowels.add(ph_list[1])
+    return vowels
+
+
 def request_to_token(request: dict) -> str:
     req_str = json.dumps(request, ensure_ascii=False, sort_keys=True)
     return hashlib.md5(req_str.encode(encoding='utf-8')).hexdigest()

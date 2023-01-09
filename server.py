@@ -45,6 +45,53 @@ def models(request: BaseHTTPRequestHandler):
     request.wfile.write(json.dumps(res).encode('utf8'))
 
 
+def rhythm(request: BaseHTTPRequestHandler):
+    """
+    Example:
+        {
+          "notes": [
+            {
+              "key": 0,
+              "duration": 0.5,
+              "slur": false,
+              "phonemes": [
+                "SP"
+              ]
+            },
+            {
+              "key": 69,
+              "duration": 0.5,
+              "slur": false,
+              "phonemes": [
+                "sh",
+                "a"
+              ]
+            },
+            {
+              "key": 71,
+              "duration": 1.0,
+              "slur": true
+            }
+          ]
+        }
+    """
+    request_body = json.loads(request.rfile.read(int(request.headers['Content-Length'])))
+    ph_seq, ph_dur = synthesis.predict_rhythm(request_body['notes'], phoneme_list, vowels, config)
+    res = {
+        'phonemes': [
+            {
+                'name': name,
+                'duration': duration
+            }
+            for name, duration in zip(ph_seq, ph_dur)
+        ]
+    }
+    request.send_response(200)
+    request.send_header('Content-Type', 'application/json')
+    request.end_headers()
+    request.wfile.write(json.dumps(res).encode('utf8'))
+
+
 def submit(request: BaseHTTPRequestHandler):
     """
     Example:
@@ -74,6 +121,8 @@ def submit(request: BaseHTTPRequestHandler):
         }
     """
     request_body = json.loads(request.rfile.read(int(request.headers['Content-Length'])))
+    if 'speedup' not in request_body:
+        request_body['speedup'] = config['acoustic']['speedup']
     token = utils.request_to_token(request_body)
     cache_file = os.path.join(cache, f'{token}.wav')
     if os.path.exists(cache_file):
@@ -197,13 +246,11 @@ def download(request: BaseHTTPRequestHandler):
 
 def _execute(request: dict, cache_file: str, token: str):
     logging.info(f'Task \'{token}\' begins')
-    if 'speedup' not in request:
-        request['speedup'] = config['acoustic']['speedup']
     try:
         wav = synthesis.run_synthesis(
             request, phoneme_list,
             os.path.join(ACOUSTIC_ROOT, f'{request["model"]}.onnx'),
-            vocoder_path, config
+            config
         )
         os.makedirs(cache, exist_ok=True)
         soundfile.write(cache_file, wav, config['vocoder']['sample_rate'])
@@ -224,6 +271,7 @@ config = {}
 dictionary = {}
 dict_pad = -1
 phoneme_list = []
+vowels = set()
 vocoder_path = ''
 cache = ''
 pool: ThreadPoolExecutor
@@ -234,6 +282,7 @@ failures = {}
 apis = {
     '/version': (version, ['GET']),
     '/models': (models, ['GET']),
+    '/rhythm': (rhythm, ['POST']),
     '/submit': (submit, ['POST']),
     '/query': (query, ['POST']),
     '/cancel': (cancel, ['POST']),
@@ -278,6 +327,7 @@ if __name__ == '__main__':
         dict_path = os.path.join(SERVER_ROOT, dict_path)
     dict_pad = config['dictionary']['reserved_tokens']
     dictionary.update(utils.load_dictionary(dict_path))
+    vowels.update(utils.dictionary_to_vowels(dictionary))
     logging.info(f'Loaded dictionary from \'{dict_path}\'')
 
     phoneme_list.extend(utils.dictionary_to_phonemes(dictionary, dict_pad))
