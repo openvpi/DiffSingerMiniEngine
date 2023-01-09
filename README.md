@@ -6,9 +6,10 @@ A minimum inference engine for DiffSinger MIDI-less mode.
 1. Install `onnxruntime` following the [official guidance](https://onnxruntime.ai/).
 2. Install other dependencies with `pip install PyYAML soundfile`.
 3. Download ONNX version of the NSF-HiFiGAN vocoder from [here](https://github.com/openvpi/vocoders/releases/tag/nsf-hifigan-v1) and unzip it into `assets/vocoder` directory.
-4. Put your ONNX acoustic models into `assets/acoustic` directory.
-5. Edit `configs/default.yaml` or create another config file according to your preference and local environment.
-6. Run server with `python server.py`.
+4. Download an ONNX rhythm predictor from [here](https://github.com/openvpi/DiffSinger/releases/tag/v1.4.1) and put it into `assets/rhythmizer` directory.
+5. Put your ONNX acoustic models into `assets/acoustic` directory.
+6. Edit `configs/default.yaml` or create another config file according to your preference and local environment.
+7. Run server with `python server.py` or `python server.py --config <YOUR_CONFIG>`.
 
 ## API Specification
 

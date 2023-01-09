@@ -2,7 +2,7 @@ dictionary:
   filename: assets/dictionaries/opencpop-strict.txt
   reserved_tokens: 3
 rhythmizer:
-  filename: assets/rhythmizer/1214_opencpop_ds1000_fix_label.dur_predictor.onnx
+  filename: assets/rhythmizer/1214_opencpop_ds1000_fix_label.rhythmizer.onnx
 acoustic:
   speedup: 10
 vocoder:
