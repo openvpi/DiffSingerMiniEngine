@@ -148,7 +148,7 @@ def submit(request: BaseHTTPRequestHandler):
     request.wfile.write(json.dumps(res).encode('utf8'))
 
 '''
-POST /submit HTTP/1.1
+POST /query HTTP/1.1
 Content-Type:application/json
 {"token": "afbc3057747f0cd98b67f01038855380"}
 
