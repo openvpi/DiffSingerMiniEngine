@@ -168,7 +168,7 @@ def submit(request: BaseHTTPRequestHandler):
         raise e
 
 '''
-POST /queryHTTP/1.1
+POST /query HTTP/1.1
 Content-Type:application/json
 {"token": "afbc3057747f0cd98b67f01038855380"}
 
