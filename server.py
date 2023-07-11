@@ -23,7 +23,13 @@ logging.basicConfig(level='DEBUG',
                     format="%(asctime)s - %(levelname)-7s: %(message)s",
                     datefmt="%Y-%m-%d %H:%M:%S")
 
+'''
+GET /version HTTP/1.1
 
+HTTP/1.1 200 OK
+Content-Type:application/json
+{"version": "1.0.1", "date": "2023-01-08"}
+'''
 def version(request: BaseHTTPRequestHandler):
     v = {
         'version': VERSION,
@@ -34,7 +40,13 @@ def version(request: BaseHTTPRequestHandler):
     request.end_headers()
     request.wfile.write(json.dumps(v).encode('utf8'))
 
+'''
+GET /models HTTP/1.1
 
+HTTP/1.1 200 OK
+Content-Type:application/json
+{"models": ["1215_opencpop_ds1000_fix_label_nomidi"]}
+'''
 def models(request: BaseHTTPRequestHandler):
     res = {
         'models': [os.path.basename(file)[:-5] for file in glob.glob(os.path.join(ACOUSTIC_ROOT, '*.onnx'))]
@@ -44,82 +56,77 @@ def models(request: BaseHTTPRequestHandler):
     request.end_headers()
     request.wfile.write(json.dumps(res).encode('utf8'))
 
+"""
+POST /rhythm HTTP/1.1
+Content-Type:application/json
+{
+    "notes":[
+        {"key": 0,"duration": 0.5,"slur": false,"phonemes": ["SP"]},
+        {"key": 69,"duration": 0.5,"slur": false,"phonemes": ["sh","a"]},
+        {"key": 71,"duration": 1.0,"slur": true}
+    ]
+}
 
+HTTP/1.1 200 OK
+Content-Type:application/json
+{"phonemes":[
+    {"name": "SP", "duration": 0.235995352268219}, 
+    {"name": "sh", "duration": 0.264004647731781}, {"name": "a", "duration": 1.5}
+]}
+"""
 def rhythm(request: BaseHTTPRequestHandler):
-    """
-    Example:
-        {
-          "notes": [
-            {
-              "key": 0,
-              "duration": 0.5,
-              "slur": false,
-              "phonemes": [
-                "SP"
-              ]
-            },
-            {
-              "key": 69,
-              "duration": 0.5,
-              "slur": false,
-              "phonemes": [
-                "sh",
-                "a"
-              ]
-            },
-            {
-              "key": 71,
-              "duration": 1.0,
-              "slur": true
-            }
-          ]
-        }
-    """
-    request_body = json.loads(request.rfile.read(int(request.headers['Content-Length'])))
-    ph_seq, ph_dur = synthesis.predict_rhythm(request_body['notes'], phoneme_list, vowels, config)
-    res = {
-        'phonemes': [
-            {
-                'name': name,
-                'duration': duration
-            }
-            for name, duration in zip(ph_seq, ph_dur)
-        ]
-    }
-    request.send_response(200)
-    request.send_header('Content-Type', 'application/json')
-    request.end_headers()
-    request.wfile.write(json.dumps(res).encode('utf8'))
-
-
-def submit(request: BaseHTTPRequestHandler):
-    """
-    Example:
-        {
-          "model": "1215_opencpop_ds1000_fix_label_nomidi",
-          "phonemes": [
-            {
-              "name": "SP",
-              "duration": 0.5
-            },
-            {
-              "name": "SP",
-              "duration": 0.5
-            }
-          ],
-          "f0": {
-            "timestep": 0.01,
-            "values": [
-              440.0,
-              440.0,
-              440.0,
-              440.0,
-              440.0
+    try: 
+        request_body = json.loads(request.rfile.read(int(request.headers['Content-Length'])))
+        ph_seq, ph_dur = synthesis.predict_rhythm(request_body['notes'], phoneme_list, vowels, config)
+        res = {
+            'phonemes': [
+                {
+                    'name': name,
+                    'duration': duration
+                }
+                for name, duration in zip(ph_seq, ph_dur)
             ]
-          },
-          "speedup": 50
         }
-    """
+        request.send_response(200)
+        request.send_header('Content-Type', 'application/json')
+        request.end_headers()
+        request.wfile.write(json.dumps(res).encode('utf8'))
+    except Exception as e:
+        res = {
+        'error': str(repr(e))
+        }
+        request.send_response(400)
+        request.send_header('Content-Type', 'application/json')
+        request.end_headers()
+        request.wfile.write(json.dumps(res).encode('utf8'))
+        raise e
+    
+"""
+POST /submit HTTP/1.1
+Content-Type:application/json
+{
+    "model": "1215_opencpop_ds1000_fix_label_nomidi",
+    "phonemes":[
+        {"name": "SP", "duration": 0.235995352268219}, 
+        {"name": "sh", "duration": 0.264004647731781}, {"name": "a", "duration": 1.5}
+    ],
+    "f0":{
+        "timestep": 0.01,
+        "values": [440.0,440.0,440.0,440.0,440.0]
+    },
+    "speedup": 50
+}
+
+HTTP/1.1 200 OK
+Content-Type:application/json
+{
+    "token": "afbc3057747f0cd98b67f01038855380",
+    "status": "SUBMITTED",
+    "code": "ae67"
+}
+"""
+def submit(request: BaseHTTPRequestHandler):
+  try:
     request_body = json.loads(request.rfile.read(int(request.headers['Content-Length'])))
     if 'speedup' not in request_body:
         request_body['speedup'] = config['acoustic']['speedup']
@@ -150,11 +157,30 @@ def submit(request: BaseHTTPRequestHandler):
     request.send_header('Content-Type', 'application/json')
     request.end_headers()
     request.wfile.write(json.dumps(res).encode('utf8'))
+  except Exception as e:
+        res = {
+        'error': str(repr(e))
+        }
+        request.send_response(400)
+        request.send_header('Content-Type', 'application/json')
+        request.end_headers()
+        request.wfile.write(json.dumps(res).encode('utf8'))
+        raise e
 
+'''
+POST /query HTTP/1.1
+Content-Type:application/json
+{"token": "afbc3057747f0cd98b67f01038855380"}
 
+HTTP/1.1 200 OK
+Content-Type:application/json
+{"status": "HIT_CACHE"}
+'''
 def query(request: BaseHTTPRequestHandler):
+  try:
     request_body = json.loads(request.rfile.read(int(request.headers['Content-Length'])))
     token = request_body['token']
+    
     cache_file = os.path.join(cache, f'{token}.wav')
     if os.path.exists(cache_file):
         res = {
@@ -197,9 +223,23 @@ def query(request: BaseHTTPRequestHandler):
         else:
             request.send_error(404)
         mutex.release()
-
-
+  except Exception as e:
+        res = {
+        'error': str(repr(e))
+        }
+        request.send_response(400)
+        request.send_header('Content-Type', 'application/json')
+        request.end_headers()
+        request.wfile.write(json.dumps(res).encode('utf8'))
+        raise e
+'''
+POST /cancel HTTP/1.1
+Content-Type:application/json
+{"token": "afbc3057747f0cd98b67f01038855380","code":"ae67"}
+{"succeeded": false,"message": "Task result already in cache."}
+'''
 def cancel(request: BaseHTTPRequestHandler):
+  try:
     request_body = json.loads(request.rfile.read(int(request.headers['Content-Length'])))
     token = request_body['token']
     code = request_body['code']
@@ -228,9 +268,23 @@ def cancel(request: BaseHTTPRequestHandler):
     request.send_header('Content-Type', 'application/json')
     request.end_headers()
     request.wfile.write(json.dumps(res).encode('utf8'))
+  except Exception as e:
+        res = {
+        'error': str(repr(e))
+        }
+        request.send_response(400)
+        request.send_header('Content-Type', 'application/json')
+        request.end_headers()
+        request.wfile.write(json.dumps(res).encode('utf8'))
+        raise e
+'''
+GET /download?token=afbc3057747f0cd98b67f01038855380 HTTP/1.1
 
-
+HTTP/1.1 200 ok
+content-type: audio/wav
+'''
 def download(request: BaseHTTPRequestHandler):
+  try:
     params = dict(urllib.parse.parse_qsl(urllib.parse.urlsplit(request.path).query))
     token = params['token']
     cache_file = os.path.join(cache, f'{token}.wav')
@@ -242,7 +296,15 @@ def download(request: BaseHTTPRequestHandler):
             request.wfile.write(f.read())
     else:
         request.send_response(404)
-
+  except Exception as e:
+        res = {
+        'error': str(repr(e))
+        }
+        request.send_response(400)
+        request.send_header('Content-Type', 'application/json')
+        request.end_headers()
+        request.wfile.write(json.dumps(res).encode('utf8'))
+        raise e
 
 def _execute(request: dict, cache_file: str, token: str):
     logging.info(f'Task \'{token}\' begins')
@@ -289,7 +351,7 @@ apis = {
     '/download': (download, ['GET'])
 }
 mutex = threading.Lock()
-
+ 
 
 class Request(BaseHTTPRequestHandler):
     def do_GET(self):
